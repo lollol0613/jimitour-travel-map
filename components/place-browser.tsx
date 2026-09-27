@@ -97,6 +97,8 @@ export default function PlaceBrowser({ places, events }: PlaceBrowserProps) {
     Exclude<FilterCategory, "all">[]
   >([]);
 
+  const [showFilters, setShowFilters] = useState(false);
+
   function toggleCategory(category: Exclude<FilterCategory, "all">) {
     setSelectedCategories((current) =>
       current.includes(category)
@@ -444,177 +446,191 @@ export default function PlaceBrowser({ places, events }: PlaceBrowserProps) {
           />
         </div>
 
-        {/* 상태 */}
-        <div className="border-b border-zinc-200 py-5">
-          <h3 className="mb-3 text-sm font-semibold text-zinc-900">상태</h3>
+        {/* 모바일용 필터 홀더 */}
+        <button
+          type="button"
+          onClick={() => setShowFilters((current) => !current)}
+          className="mt-4 flex w-full items-center justify-between rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 xl:hidden"
+        >
+          <span>추가 필터</span>
+          <span>{showFilters ? "▲" : "▼"}</span>
+        </button>
 
-          <div className="space-y-2.5">
-            {[
-              { value: "wishlist", label: "🟡 Wishlist" },
-              { value: "visited", label: "🟢 지미Pick" },
-            ].map((status) => {
-              const value = status.value as "visited" | "wishlist";
-              const checked = selectedStatuses.includes(value);
+        <div className={`${showFilters ? "block" : "hidden"} xl:block`}>
+          {/* 상태 */}
+          <div className="border-b border-zinc-200 py-5">
+            <h3 className="mb-3 text-sm font-semibold text-zinc-900">상태</h3>
 
-              return (
-                <label
-                  key={value}
-                  className="flex cursor-pointer items-center gap-2.5 text-sm text-zinc-700"
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleStatus(value)}
-                    className="h-4 w-4 rounded border-zinc-300"
-                  />
-
-                  <span>{status.label}</span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Island */}
-        <div className="border-b border-zinc-200 py-5">
-          <h3 className="mb-3 text-sm font-semibold text-zinc-900">Island</h3>
-
-          <div className="space-y-2.5">
-            {[
-              { value: "all", label: "All" },
-              { value: "north", label: "North Island(북섬)" },
-              { value: "south", label: "South Island(남섬)" },
-            ].map((island) => {
-              const checked = selectedIsland === island.value;
-
-              return (
-                <label
-                  key={island.value}
-                  className="flex cursor-pointer items-center gap-2.5 text-sm text-zinc-700"
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => {
-                      setSelectedIsland(
-                        island.value as "all" | "north" | "south",
-                      );
-                      setSelectedCities([]);
-                    }}
-                    className="h-4 w-4 rounded border-zinc-300"
-                  />
-
-                  <span>{island.label}</span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 도시 */}
-        <div className="border-b border-zinc-200 py-5">
-          <h3 className="mb-3 text-sm font-semibold text-zinc-900">도시</h3>
-
-          <div className="max-h-44 space-y-2.5 overflow-y-auto pr-2">
-            {visibleCities.map((city) => {
-              const checked = selectedCities.includes(city);
-
-              return (
-                <label
-                  key={city}
-                  className="flex cursor-pointer items-center gap-2.5 text-sm text-zinc-700"
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleCity(city)}
-                    className="h-4 w-4 rounded border-zinc-300"
-                  />
-
-                  <span>{city}</span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 카테고리 */}
-        <div className="border-b border-zinc-200 py-5">
-          <h3 className="mb-3 text-sm font-semibold text-zinc-900">카테고리</h3>
-
-          <div className="space-y-2.5">
-            {filters
-              .filter((filter) => filter.value !== "all")
-              .map((filter) => {
-                const value = filter.value as Exclude<FilterCategory, "all">;
-
-                const checked = selectedCategories.includes(value);
+            <div className="space-y-2.5">
+              {[
+                { value: "wishlist", label: "🟡 Wishlist" },
+                { value: "visited", label: "🟢 지미Pick" },
+              ].map((status) => {
+                const value = status.value as "visited" | "wishlist";
+                const checked = selectedStatuses.includes(value);
 
                 return (
                   <label
-                    key={filter.value}
+                    key={value}
                     className="flex cursor-pointer items-center gap-2.5 text-sm text-zinc-700"
                   >
                     <input
                       type="checkbox"
                       checked={checked}
-                      onChange={() => toggleCategory(value)}
+                      onChange={() => toggleStatus(value)}
                       className="h-4 w-4 rounded border-zinc-300"
                     />
 
-                    <span>{filter.label}</span>
-                  </label>
-                );
-              })}
-          </div>
-        </div>
-
-        <div className="border-b border-zinc-200 py-5">
-          <h3 className="mb-3 text-sm font-semibold text-zinc-900">태그</h3>
-
-          <label className="flex cursor-pointer items-center gap-2.5 text-sm text-zinc-700">
-            <input
-              type="checkbox"
-              checked={selectedTags.includes("Baby")}
-              onChange={() => toggleTag("Baby")}
-              className="h-4 w-4 rounded border-zinc-300"
-            />
-
-            <span>👶 with Baby</span>
-          </label>
-        </div>
-
-        {/* 이벤트 월 */}
-        {selectedCategories.includes("event") && (
-          <div className="pt-5">
-            <h3 className="mb-3 text-sm font-semibold text-zinc-900">
-              이벤트 월
-            </h3>
-
-            <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
-              {Array.from({ length: 12 }, (_, index) => {
-                const month = index + 1;
-                const checked = selectedMonths.includes(month);
-
-                return (
-                  <label
-                    key={month}
-                    className="flex cursor-pointer items-center gap-2 text-sm text-zinc-700"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleMonth(month)}
-                      className="h-4 w-4 rounded border-zinc-300"
-                    />
-
-                    <span>{month}월</span>
+                    <span>{status.label}</span>
                   </label>
                 );
               })}
             </div>
           </div>
-        )}
+
+          {/* Island */}
+          <div className="border-b border-zinc-200 py-5">
+            <h3 className="mb-3 text-sm font-semibold text-zinc-900">Island</h3>
+
+            <div className="space-y-2.5">
+              {[
+                { value: "all", label: "All" },
+                { value: "north", label: "North Island(북섬)" },
+                { value: "south", label: "South Island(남섬)" },
+              ].map((island) => {
+                const checked = selectedIsland === island.value;
+
+                return (
+                  <label
+                    key={island.value}
+                    className="flex cursor-pointer items-center gap-2.5 text-sm text-zinc-700"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => {
+                        setSelectedIsland(
+                          island.value as "all" | "north" | "south",
+                        );
+                        setSelectedCities([]);
+                      }}
+                      className="h-4 w-4 rounded border-zinc-300"
+                    />
+
+                    <span>{island.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 도시 */}
+          <div className="border-b border-zinc-200 py-5">
+            <h3 className="mb-3 text-sm font-semibold text-zinc-900">도시</h3>
+
+            <div className="max-h-44 space-y-2.5 overflow-y-auto pr-2">
+              {visibleCities.map((city) => {
+                const checked = selectedCities.includes(city);
+
+                return (
+                  <label
+                    key={city}
+                    className="flex cursor-pointer items-center gap-2.5 text-sm text-zinc-700"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleCity(city)}
+                      className="h-4 w-4 rounded border-zinc-300"
+                    />
+
+                    <span>{city}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 카테고리 */}
+          <div className="border-b border-zinc-200 py-5">
+            <h3 className="mb-3 text-sm font-semibold text-zinc-900">
+              카테고리
+            </h3>
+
+            <div className="space-y-2.5">
+              {filters
+                .filter((filter) => filter.value !== "all")
+                .map((filter) => {
+                  const value = filter.value as Exclude<FilterCategory, "all">;
+
+                  const checked = selectedCategories.includes(value);
+
+                  return (
+                    <label
+                      key={filter.value}
+                      className="flex cursor-pointer items-center gap-2.5 text-sm text-zinc-700"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleCategory(value)}
+                        className="h-4 w-4 rounded border-zinc-300"
+                      />
+
+                      <span>{filter.label}</span>
+                    </label>
+                  );
+                })}
+            </div>
+          </div>
+
+          <div className="border-b border-zinc-200 py-5">
+            <h3 className="mb-3 text-sm font-semibold text-zinc-900">태그</h3>
+
+            <label className="flex cursor-pointer items-center gap-2.5 text-sm text-zinc-700">
+              <input
+                type="checkbox"
+                checked={selectedTags.includes("Baby")}
+                onChange={() => toggleTag("Baby")}
+                className="h-4 w-4 rounded border-zinc-300"
+              />
+
+              <span>👶 with Baby</span>
+            </label>
+          </div>
+
+          {/* 이벤트 월 */}
+          {selectedCategories.includes("event") && (
+            <div className="pt-5">
+              <h3 className="mb-3 text-sm font-semibold text-zinc-900">
+                이벤트 월
+              </h3>
+
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
+                {Array.from({ length: 12 }, (_, index) => {
+                  const month = index + 1;
+                  const checked = selectedMonths.includes(month);
+
+                  return (
+                    <label
+                      key={month}
+                      className="flex cursor-pointer items-center gap-2 text-sm text-zinc-700"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleMonth(month)}
+                        className="h-4 w-4 rounded border-zinc-300"
+                      />
+
+                      <span>{month}월</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       </aside>
       <div className="min-w-0">
         <section aria-labelledby="map-heading">
