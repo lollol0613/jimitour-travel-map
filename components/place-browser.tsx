@@ -427,7 +427,7 @@ export default function PlaceBrowser({ places, events }: PlaceBrowserProps) {
             onClick={resetFilters}
             className="text-xs font-medium text-zinc-500 hover:text-blue-600"
           >
-            초기화
+            필터 초기화
           </button>
         </div>
 
@@ -452,7 +452,7 @@ export default function PlaceBrowser({ places, events }: PlaceBrowserProps) {
           onClick={() => setShowFilters((current) => !current)}
           className="mt-4 flex w-full items-center justify-between rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 xl:hidden"
         >
-          <span>추가 필터</span>
+          <span>필터 더보기</span>
           <span>{showFilters ? "▲" : "▼"}</span>
         </button>
 

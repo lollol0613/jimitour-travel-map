@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 async function createTrip(formData: FormData) {
   "use server";
+
+  const supabase = await createServerSupabaseClient();
 
   const name = String(formData.get("name") ?? "");
   const startDate = String(formData.get("start_date") ?? "");
@@ -16,6 +18,8 @@ async function createTrip(formData: FormData) {
     .insert({
       name,
       city: city || null,
+      start_date: startDate || null,
+      end_date: endDate || null,
       memo: memo || null,
     })
     .select("id")
