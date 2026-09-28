@@ -41,10 +41,20 @@ export default function TripPlacePicker({
 
   const [addedPlaceIds, setAddedPlaceIds] = useState<string[]>([]);
 
+  const [searchQuery, setSearchQuery] = useState("");
+
   const visiblePlaces = places.filter((place) => {
+    const query = searchQuery.trim().toLowerCase();
+
+    const matchesSearch =
+      query === "" ||
+      place.name.toLowerCase().includes(query) ||
+      (place.city ?? "").toLowerCase().includes(query) ||
+      place.category.toLowerCase().includes(query);
+
     const matchesCategory = category === "all" || place.category === category;
 
-    if (!matchesCategory) {
+    if (!matchesSearch || !matchesCategory) {
       return false;
     }
 
@@ -73,6 +83,15 @@ export default function TripPlacePicker({
 
   return (
     <div>
+      <div className="mb-5">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          placeholder="장소명 또는 도시 검색"
+          className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
+        />
+      </div>
       <div className="mb-5 flex flex-wrap gap-2">
         {[
           { value: "city", label: tripCity ? `${tripCity}` : "대표 도시" },
