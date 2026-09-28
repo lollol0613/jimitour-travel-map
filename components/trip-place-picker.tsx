@@ -127,7 +127,7 @@ export default function TripPlacePicker({
           { value: "restaurant", label: "🍴 맛집" },
           { value: "attraction", label: "📍 가볼 곳" },
           { value: "cafe", label: "☕ 카페" },
-          { value: "shopping", label: "🛍 쇼핑" },
+          { value: "shopping", label: "🛒 쇼핑" },
           { value: "other", label: "📌 기타" },
         ].map((option) => {
           const selected = category === option.value;
