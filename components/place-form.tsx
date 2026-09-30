@@ -1,6 +1,105 @@
+"use client";
+
+import { useState } from "react";
 import { createPlace } from "@/app/actions/place";
 
+const MAX_IMAGE_SIZE = 1600;
+const TARGET_FILE_SIZE = 850 * 1024;
+
+async function convertImageToWebp(file: File) {
+  const bitmap = await createImageBitmap(file);
+
+  let width = bitmap.width;
+  let height = bitmap.height;
+
+  if (width > MAX_IMAGE_SIZE || height > MAX_IMAGE_SIZE) {
+    const ratio = Math.min(MAX_IMAGE_SIZE / width, MAX_IMAGE_SIZE / height);
+
+    width = Math.round(width * ratio);
+    height = Math.round(height * ratio);
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    bitmap.close();
+    throw new Error("이미지를 처리할 수 없습니다.");
+  }
+
+  context.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+
+  let quality = 0.82;
+
+  let blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, "image/webp", quality);
+  });
+
+  while (blob && blob.size > TARGET_FILE_SIZE && quality > 0.45) {
+    quality -= 0.08;
+
+    blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, "image/webp", quality);
+    });
+  }
+
+  if (!blob) {
+    throw new Error("WebP 변환에 실패했습니다.");
+  }
+
+  return new File([blob], `${file.name.replace(/\.[^/.]+$/, "")}.webp`, {
+    type: "image/webp",
+  });
+}
+
 export default function PlaceForm() {
+  const [imageMessage, setImageMessage] = useState("");
+  const [processingImage, setProcessingImage] = useState(false);
+
+  async function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+
+    if (!file) {
+      setImageMessage("");
+      return;
+    }
+
+    try {
+      setProcessingImage(true);
+      setImageMessage("이미지 최적화 중...");
+
+      const originalSize = file.size;
+
+      const convertedFile = await convertImageToWebp(file);
+
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(convertedFile);
+      input.files = dataTransfer.files;
+
+      const originalMb = (originalSize / 1024 / 1024).toFixed(1);
+      const convertedKb = Math.round(convertedFile.size / 1024);
+
+      setImageMessage(
+        `✓ ${originalMb}MB → ${convertedKb}KB WebP로 최적화되었습니다.`,
+      );
+    } catch (error) {
+      console.error(error);
+
+      input.value = "";
+
+      setImageMessage(
+        "이미지를 처리하지 못했습니다. 다른 이미지 파일을 선택해주세요.",
+      );
+    } finally {
+      setProcessingImage(false);
+    }
+  }
+
   return (
     <form
       action={createPlace}
@@ -139,17 +238,28 @@ export default function PlaceForm() {
           name="image_file"
           type="file"
           accept="image/*"
+          onChange={handleImageChange}
           className="block w-full text-sm text-zinc-600
-      file:mr-4
-      file:rounded-md
-      file:border-0
-      file:bg-zinc-100
-      file:px-4
-      file:py-2
-      file:text-sm
-      file:font-medium
-      hover:file:bg-zinc-200"
+            file:mr-4
+            file:rounded-md
+            file:border-0
+            file:bg-zinc-100
+            file:px-4
+            file:py-2
+            file:text-sm
+            file:font-medium
+            hover:file:bg-zinc-200"
         />
+
+        {imageMessage && (
+          <p
+            className={`mt-2 text-sm ${
+              imageMessage.startsWith("✓") ? "text-green-600" : "text-zinc-500"
+            }`}
+          >
+            {imageMessage}
+          </p>
+        )}
       </div>
 
       <div>
@@ -164,9 +274,10 @@ export default function PlaceForm() {
 
       <button
         type="submit"
-        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        disabled={processingImage}
+        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-zinc-400"
       >
-        장소 저장
+        {processingImage ? "이미지 처리 중..." : "장소 저장"}
       </button>
     </form>
   );
