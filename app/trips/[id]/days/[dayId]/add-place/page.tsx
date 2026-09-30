@@ -91,10 +91,11 @@ export default async function AddPlacePage({ params }: AddPlacePageProps) {
 
   const { data: existingTripPlaces, error: existingTripPlacesError } =
     await supabase
-      .from("trip_places")
+      .from("trip_items")
       .select(
         `
       place_id,
+      item_type,
       trip_days!inner (
         trip_id
       ),
@@ -105,7 +106,8 @@ export default async function AddPlacePage({ params }: AddPlacePageProps) {
       )
     `,
       )
-      .eq("trip_days.trip_id", id);
+      .eq("trip_days.trip_id", id)
+      .eq("item_type", "place");
 
   if (existingTripPlacesError) {
     throw new Error(existingTripPlacesError.message);
@@ -159,7 +161,9 @@ export default async function AddPlacePage({ params }: AddPlacePageProps) {
 
   const { data: places, error: placesError } = await supabase
     .from("places")
-    .select("id, name, category, city, rating, latitude, longitude")
+    .select(
+      "id, name, category, city, rating, latitude, longitude, status, memo, image_url",
+    )
     .order("name", { ascending: true });
 
   if (placesError) {

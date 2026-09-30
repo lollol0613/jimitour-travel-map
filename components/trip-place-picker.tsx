@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getRatingLabel } from "@/lib/rating";
 
 type CandidatePlace = {
   id: string;
@@ -11,6 +12,10 @@ type CandidatePlace = {
   latitude: number;
   longitude: number;
   distanceKm: number | null;
+
+  status: "visited" | "wishlist";
+  memo: string | null;
+  image_url: string | null;
 };
 
 type TripPlacePickerProps = {
@@ -166,15 +171,48 @@ export default function TripPlacePicker({
             key={place.id}
             className="rounded-xl border border-zinc-200 bg-white p-4"
           >
-            <div className="font-semibold">{place.name}</div>
-
-            <div className="mt-1 text-sm text-zinc-500">
-              {place.city ?? "도시 없음"}
-
-              {place.distanceKm !== null && (
-                <> · {place.distanceKm.toFixed(1)}km</>
+            <div className="flex items-start gap-3">
+              {place.image_url && (
+                <img
+                  src={place.image_url}
+                  alt={place.name}
+                  className="h-20 w-20 shrink-0 rounded-lg object-cover"
+                />
               )}
+
+              <div className="min-w-0 flex-1">
+                <div className="font-semibold">{place.name}</div>
+
+                <div className="mt-1 text-sm text-zinc-500">
+                  {place.city ?? "도시 없음"}
+
+                  {place.distanceKm !== null && (
+                    <> · {place.distanceKm.toFixed(1)}km</>
+                  )}
+                </div>
+
+                <div className="mt-2 text-sm text-zinc-600">
+                  {place.status === "visited" ? (
+                    <>
+                      🟢 지미픽
+                      {place.rating !== null && (
+                        <span className="ml-2">
+                          · {getRatingLabel(place.rating)}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <>🟡 Wishlist</>
+                  )}
+                </div>
+              </div>
             </div>
+
+            {place.memo && (
+              <p className="mt-3 line-clamp-2 text-sm leading-6 text-zinc-600">
+                {place.memo}
+              </p>
+            )}
 
             <form
               action={async () => {
