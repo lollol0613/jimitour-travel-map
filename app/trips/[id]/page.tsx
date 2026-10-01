@@ -71,36 +71,38 @@ export default async function TripPage({ params }: TripPageProps) {
       .from("trip_items")
       .select(
         `
-      id,
-      trip_day_id,
-      item_type,
-      position,
-      place_id,
-      event_id,
-      places (
         id,
-        name,
-        category,
-        city,
-        rating,
-        latitude,
-        longitude,
-        status,
-        memo
-      ),
-      events (
-        id,
-        name,
-        city,
-        start_date,
-        end_date,
-        event_month,
-        category,
-        latitude,
-        longitude,
-        memo
-      )
-    `,
+        trip_day_id,
+        item_type,
+        position,
+        place_id,
+        event_id,
+        travel_distance_text,
+        travel_duration_text,
+        places (
+          id,
+          name,
+          category,
+          city,
+          rating,
+          latitude,
+          longitude,
+          status,
+          memo
+        ),
+        events (
+          id,
+          name,
+          city,
+          start_date,
+          end_date,
+          event_month,
+          category,
+          latitude,
+          longitude,
+          memo
+        )
+      `,
       )
       .in("trip_day_id", dayIds)
       .order("position", { ascending: true });
@@ -139,6 +141,9 @@ export default async function TripPage({ params }: TripPageProps) {
     status: "visited" | "wishlist" | null;
     memo: string | null;
 
+    travelDistanceText: string | null;
+    travelDurationText: string | null;
+
     startDate: string | null;
     endDate: string | null;
     eventMonth: number | null;
@@ -167,6 +172,10 @@ export default async function TripPage({ params }: TripPageProps) {
             category: place.category,
             status: place.status,
             memo: place.memo,
+
+            travelDistanceText: item.travel_distance_text,
+            travelDurationText: item.travel_duration_text,
+
             startDate: null,
             endDate: null,
             eventMonth: null,
@@ -195,6 +204,10 @@ export default async function TripPage({ params }: TripPageProps) {
             category: "event",
             status: null,
             memo: event.memo,
+
+            travelDistanceText: item.travel_distance_text,
+            travelDurationText: item.travel_duration_text,
+
             startDate: event.start_date,
             endDate: event.end_date,
             eventMonth: event.event_month,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { arrayMove } from "@dnd-kit/sortable";
 import { createBrowserSupabaseClient } from "@/lib/supabase-client";
 import TripRouteMap from "@/components/trip-route-map";
@@ -32,6 +32,9 @@ type ItineraryPlace = {
 
   status: "visited" | "wishlist" | null;
   memo: string | null;
+
+  travelDistanceText: string | null;
+  travelDurationText: string | null;
 
   startDate: string | null;
   endDate: string | null;
@@ -334,145 +337,260 @@ export default function TripItineraryBoard({
                   {placesForDay.length > 0 && (
                     <>
                       <ol className="mt-3 space-y-2">
-                        {placesForDay.map((place) => (
-                          <SortablePlace key={place.id} id={place.id}>
-                            <li className="rounded-lg bg-zinc-50 p-3">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="shrink-0 font-medium">
-                                      {place.position}.
-                                    </span>
+                        {placesForDay.map((place, index) => {
+                          const isLastItem = index === placesForDay.length - 1;
 
-                                    <span className="min-w-0 flex-1 truncate">
-                                      {place.name}
-                                    </span>
+                          return (
+                            <Fragment key={place.id}>
+                              <SortablePlace id={place.id}>
+                                <li className="rounded-lg bg-zinc-50 p-3">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="shrink-0 font-medium">
+                                          {place.position}.
+                                        </span>
 
-                                    {place.itemType === "place" && (
-                                      <span
-                                        className="shrink-0 text-sm"
-                                        title={
-                                          place.status === "visited"
-                                            ? "지미 Pick"
-                                            : "Wishlist"
+                                        <span className="min-w-0 flex-1 truncate">
+                                          {place.name}
+                                        </span>
+
+                                        {place.itemType === "place" && (
+                                          <span
+                                            className="shrink-0 text-sm"
+                                            title={
+                                              place.status === "visited"
+                                                ? "지미 Pick"
+                                                : "Wishlist"
+                                            }
+                                          >
+                                            {place.status === "visited"
+                                              ? "🟢"
+                                              : "🟡"}
+                                          </span>
+                                        )}
+
+                                        <span
+                                          className="shrink-0 text-base"
+                                          title={place.category}
+                                        >
+                                          {getCategoryIcon(place.category)}
+                                        </span>
+                                      </div>
+
+                                      {place.itemType === "event" && (
+                                        <p className="mt-1 pl-6 text-xs font-medium text-blue-600">
+                                          {place.startDate}
+                                          {place.endDate &&
+                                          place.endDate !== place.startDate
+                                            ? ` ~ ${place.endDate}`
+                                            : ""}
+
+                                          {place.eventMonth && (
+                                            <span className="ml-2 text-zinc-500">
+                                              · 매년 {place.eventMonth}월
+                                            </span>
+                                          )}
+                                        </p>
+                                      )}
+
+                                      {place.memo && (
+                                        <p className="mt-1 pl-6 text-xs leading-5 text-zinc-500">
+                                          {place.memo}
+                                        </p>
+                                      )}
+                                    </div>
+
+                                    <AdminOnly>
+                                      <button
+                                        type="button"
+                                        onPointerDown={(event) =>
+                                          event.stopPropagation()
                                         }
+                                        onClick={async (event) => {
+                                          event.stopPropagation();
+
+                                          const confirmed = window.confirm(
+                                            `"${place.name}"을(를) 이 Day에서 삭제할까요?`,
+                                          );
+
+                                          if (!confirmed) {
+                                            return;
+                                          }
+
+                                          const { error } = await supabase
+                                            .from("trip_items")
+                                            .delete()
+                                            .eq("id", place.id);
+
+                                          if (error) {
+                                            console.error(
+                                              "Failed to delete place:",
+                                              error,
+                                            );
+                                            return;
+                                          }
+
+                                          setItems((currentItems) => {
+                                            const remainingItems = currentItems
+                                              .filter(
+                                                (item) => item.id !== place.id,
+                                              )
+                                              .map((item) => {
+                                                if (
+                                                  item.tripDayId !==
+                                                  place.tripDayId
+                                                ) {
+                                                  return item;
+                                                }
+
+                                                const sameDayItems =
+                                                  currentItems
+                                                    .filter(
+                                                      (dayItem) =>
+                                                        dayItem.tripDayId ===
+                                                          place.tripDayId &&
+                                                        dayItem.id !== place.id,
+                                                    )
+                                                    .sort(
+                                                      (a, b) =>
+                                                        a.position - b.position,
+                                                    );
+
+                                                const newPosition =
+                                                  sameDayItems.findIndex(
+                                                    (dayItem) =>
+                                                      dayItem.id === item.id,
+                                                  ) + 1;
+
+                                                return {
+                                                  ...item,
+                                                  position: newPosition,
+                                                };
+                                              });
+
+                                            saveOrder(remainingItems);
+
+                                            return remainingItems;
+                                          });
+                                        }}
+                                        className="shrink-0 text-xs font-medium text-red-600 hover:text-red-700"
                                       >
-                                        {place.status === "visited"
-                                          ? "🟢"
-                                          : "🟡"}
+                                        삭제
+                                      </button>
+                                    </AdminOnly>
+                                  </div>
+                                </li>
+                              </SortablePlace>
+
+                              {!isLastItem && (
+                                <div className="py-2">
+                                  <div className="flex items-center justify-center gap-3 text-sm text-zinc-500">
+                                    <span className="text-xl leading-none">
+                                      ↓
+                                    </span>
+
+                                    {(place.travelDistanceText ||
+                                      place.travelDurationText) && (
+                                      <span className="font-medium">
+                                        {place.travelDistanceText}
+
+                                        {place.travelDistanceText &&
+                                          place.travelDurationText &&
+                                          " · "}
+
+                                        {place.travelDurationText}
                                       </span>
                                     )}
-
-                                    <span
-                                      className="shrink-0 text-base"
-                                      title={place.category}
-                                    >
-                                      {getCategoryIcon(place.category)}
-                                    </span>
                                   </div>
 
-                                  {place.itemType === "event" && (
-                                    <p className="mt-1 pl-6 text-xs font-medium text-blue-600">
-                                      {place.startDate}
-                                      {place.endDate &&
-                                      place.endDate !== place.startDate
-                                        ? ` ~ ${place.endDate}`
-                                        : ""}
+                                  <AdminOnly>
+                                    <form
+                                      className="mx-auto mt-2 flex max-w-md items-center gap-2"
+                                      onSubmit={async (event) => {
+                                        event.preventDefault();
 
-                                      {place.eventMonth && (
-                                        <span className="ml-2 text-zinc-500">
-                                          · 매년 {place.eventMonth}월
-                                        </span>
-                                      )}
-                                    </p>
-                                  )}
+                                        const form = event.currentTarget;
+                                        const formData = new FormData(form);
 
-                                  {place.memo && (
-                                    <p className="mt-1 pl-6 text-xs leading-5 text-zinc-500">
-                                      {place.memo}
-                                    </p>
-                                  )}
-                                </div>
-                                <AdminOnly>
-                                  <button
-                                    type="button"
-                                    onPointerDown={(event) =>
-                                      event.stopPropagation()
-                                    }
-                                    onClick={async (event) => {
-                                      event.stopPropagation();
+                                        const distance = String(
+                                          formData.get(
+                                            "travel_distance_text",
+                                          ) ?? "",
+                                        ).trim();
 
-                                      const confirmed = window.confirm(
-                                        `"${place.name}"을(를) 이 Day에서 삭제할까요?`,
-                                      );
+                                        const duration = String(
+                                          formData.get(
+                                            "travel_duration_text",
+                                          ) ?? "",
+                                        ).trim();
 
-                                      if (!confirmed) {
-                                        return;
-                                      }
+                                        const { error } = await supabase
+                                          .from("trip_items")
+                                          .update({
+                                            travel_distance_text:
+                                              distance || null,
+                                            travel_duration_text:
+                                              duration || null,
+                                          })
+                                          .eq("id", place.id);
 
-                                      const { error } = await supabase
-                                        .from("trip_items")
-                                        .delete()
-                                        .eq("id", place.id);
+                                        if (error) {
+                                          console.error(
+                                            "Failed to save travel info:",
+                                            error,
+                                          );
+                                          return;
+                                        }
 
-                                      if (error) {
-                                        console.error(
-                                          "Failed to delete place:",
-                                          error,
+                                        setItems((currentItems) =>
+                                          currentItems.map((item) =>
+                                            item.id === place.id
+                                              ? {
+                                                  ...item,
+                                                  travelDistanceText:
+                                                    distance || null,
+                                                  travelDurationText:
+                                                    duration || null,
+                                                }
+                                              : item,
+                                          ),
                                         );
-                                        return;
-                                      }
+                                      }}
+                                    >
+                                      <input
+                                        type="text"
+                                        name="travel_distance_text"
+                                        defaultValue={
+                                          place.travelDistanceText ?? ""
+                                        }
+                                        placeholder="13.5 km"
+                                        className="min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-xs"
+                                      />
 
-                                      setItems((currentItems) => {
-                                        const remainingItems = currentItems
-                                          .filter(
-                                            (item) => item.id !== place.id,
-                                          )
-                                          .map((item) => {
-                                            if (
-                                              item.tripDayId !== place.tripDayId
-                                            ) {
-                                              return item;
-                                            }
+                                      <input
+                                        type="text"
+                                        name="travel_duration_text"
+                                        defaultValue={
+                                          place.travelDurationText ?? ""
+                                        }
+                                        placeholder="18분"
+                                        className="min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-xs"
+                                      />
 
-                                            const sameDayItems = currentItems
-                                              .filter(
-                                                (dayItem) =>
-                                                  dayItem.tripDayId ===
-                                                    place.tripDayId &&
-                                                  dayItem.id !== place.id,
-                                              )
-                                              .sort(
-                                                (a, b) =>
-                                                  a.position - b.position,
-                                              );
-
-                                            const newPosition =
-                                              sameDayItems.findIndex(
-                                                (dayItem) =>
-                                                  dayItem.id === item.id,
-                                              ) + 1;
-
-                                            return {
-                                              ...item,
-                                              position: newPosition,
-                                            };
-                                          });
-
-                                        saveOrder(remainingItems);
-
-                                        return remainingItems;
-                                      });
-                                    }}
-                                    className="shrink-0 text-xs font-medium text-red-600 hover:text-red-700"
-                                  >
-                                    삭제
-                                  </button>
-                                </AdminOnly>
-                              </div>
-                            </li>
-                          </SortablePlace>
-                        ))}
+                                      <button
+                                        type="submit"
+                                        className="shrink-0 rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-700"
+                                      >
+                                        저장
+                                      </button>
+                                    </form>
+                                  </AdminOnly>
+                                </div>
+                              )}
+                            </Fragment>
+                          );
+                        })}
                       </ol>
 
                       <div className="mt-5">
