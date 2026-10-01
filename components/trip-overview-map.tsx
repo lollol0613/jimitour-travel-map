@@ -1,7 +1,5 @@
 "use client";
 
-"use client";
-
 import { useEffect, useRef } from "react";
 import { Map, Marker, Popup, LngLatBounds, setWorkerUrl } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -89,13 +87,19 @@ export default function TripOverviewMap({ places }: TripOverviewMapProps) {
           .addTo(map);
       });
 
-      const dayNumbers = [...new Set(places.map((place) => place.dayNumber))];
+      const dayNumbers = [
+        ...new Set(places.map((place) => place.dayNumber)),
+      ].sort((a, b) => a - b);
 
-      dayNumbers.forEach((dayNumber) => {
-        const dayPlaces = places
+      const dayGroups = dayNumbers.map((dayNumber) => ({
+        dayNumber,
+        places: places
           .filter((place) => place.dayNumber === dayNumber)
-          .sort((a, b) => a.position - b.position);
+          .sort((a, b) => a.position - b.position),
+      }));
 
+      // Day 내부 이동선
+      dayGroups.forEach(({ dayNumber, places: dayPlaces }) => {
         if (dayPlaces.length < 2) {
           return;
         }
@@ -132,6 +136,54 @@ export default function TripOverviewMap({ places }: TripOverviewMapProps) {
           },
         });
       });
+
+      // Day 사이 연결선
+      for (let index = 1; index < dayGroups.length; index += 1) {
+        const previousDay = dayGroups[index - 1];
+        const currentDay = dayGroups[index];
+
+        const previousLastPlace =
+          previousDay.places[previousDay.places.length - 1];
+
+        const currentFirstPlace = currentDay.places[0];
+
+        if (!previousLastPlace || !currentFirstPlace) {
+          continue;
+        }
+
+        const sourceId = `day-connector-${previousDay.dayNumber}-${currentDay.dayNumber}`;
+
+        map.addSource(sourceId, {
+          type: "geojson",
+          data: {
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "LineString",
+              coordinates: [
+                [previousLastPlace.longitude, previousLastPlace.latitude],
+                [currentFirstPlace.longitude, currentFirstPlace.latitude],
+              ],
+            },
+          },
+        });
+
+        map.addLayer({
+          id: sourceId,
+          type: "line",
+          source: sourceId,
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+          },
+          paint: {
+            "line-width": 3,
+            "line-opacity": 0.65,
+            "line-color": "#71717a",
+            "line-dasharray": [2, 2],
+          },
+        });
+      }
 
       if (places.length === 1) {
         map.setCenter([places[0].longitude, places[0].latitude]);
