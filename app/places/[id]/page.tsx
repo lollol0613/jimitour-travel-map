@@ -30,7 +30,7 @@ function getCategoryLabel(category: Place["category"]) {
     case "cafe":
       return "☕ 카페";
     case "shopping":
-      return "🛍 쇼핑";
+      return "🛒 쇼핑";
     default:
       return "📌 기타";
   }
