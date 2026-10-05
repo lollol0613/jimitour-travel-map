@@ -170,6 +170,10 @@ export default function TravelMap({ places, selectedPlaceId }: TravelMapProps) {
     }
 
     const visiblePlaces = places.filter((place) => {
+      if (place.latitude === null || place.longitude === null) {
+        return false;
+      }
+
       const latitude = Number(place.latitude);
       const longitude = Number(place.longitude);
 
