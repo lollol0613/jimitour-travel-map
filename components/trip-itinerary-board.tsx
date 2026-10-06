@@ -336,6 +336,24 @@ export default function TripItineraryBoard({
 
                   {placesForDay.length > 0 && (
                     <>
+                      <div className="mt-5">
+                        <TripRouteMap
+                          places={placesForDay
+                            .filter(
+                              (place) =>
+                                place.latitude !== null &&
+                                place.longitude !== null,
+                            )
+                            .map((place) => ({
+                              id: place.placeId ?? place.eventId ?? place.id,
+                              name: place.name,
+                              latitude: place.latitude as number,
+                              longitude: place.longitude as number,
+                              position: place.position,
+                            }))}
+                        />
+                      </div>
+
                       <ol className="mt-3 space-y-2">
                         {placesForDay.map((place, index) => {
                           const isLastItem = index === placesForDay.length - 1;
@@ -592,24 +610,6 @@ export default function TripItineraryBoard({
                           );
                         })}
                       </ol>
-
-                      <div className="mt-5">
-                        <TripRouteMap
-                          places={placesForDay
-                            .filter(
-                              (place) =>
-                                place.latitude !== null &&
-                                place.longitude !== null,
-                            )
-                            .map((place) => ({
-                              id: place.placeId ?? place.eventId ?? place.id,
-                              name: place.name,
-                              latitude: place.latitude as number,
-                              longitude: place.longitude as number,
-                              position: place.position,
-                            }))}
-                        />
-                      </div>
                     </>
                   )}
                 </div>
