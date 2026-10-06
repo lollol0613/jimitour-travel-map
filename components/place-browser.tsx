@@ -26,6 +26,7 @@ type PlaceListItem = Pick<
   | "memo"
   | "image_url"
   | "tags"
+  | "created_at"
 >;
 
 type EventListItem = {
@@ -42,6 +43,7 @@ type EventListItem = {
   image_url: string | null;
   memo: string | null;
   tags: string[] | null;
+  created_at: string;
 };
 
 type FilterCategory =
@@ -93,6 +95,13 @@ function getCategoryLabel(category: FilterCategory) {
 }
 
 export default function PlaceBrowser({ places, events }: PlaceBrowserProps) {
+  const [mapBounds, setMapBounds] = useState<{
+    north: number;
+    south: number;
+    east: number;
+    west: number;
+  } | null>(null);
+
   const [selectedCategories, setSelectedCategories] = useState<
     Exclude<FilterCategory, "all">[]
   >([]);
@@ -361,8 +370,12 @@ export default function PlaceBrowser({ places, events }: PlaceBrowserProps) {
       start_date: event.start_date,
       end_date: event.end_date,
       tags: event.tags,
+      created_at: event.created_at,
     })),
-  ];
+  ].sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
 
   const filteredPlaces = combinedItems.filter((place) => {
     const matchesCategory =
@@ -413,6 +426,30 @@ export default function PlaceBrowser({ places, events }: PlaceBrowserProps) {
       matchesSearch &&
       matchesTags &&
       matchesIsland
+    );
+  });
+
+  const placesInMapView = filteredPlaces.filter((place) => {
+    if (!mapBounds) {
+      return true;
+    }
+
+    if (place.latitude === null || place.longitude === null) {
+      return false;
+    }
+
+    const latitude = Number(place.latitude);
+    const longitude = Number(place.longitude);
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return false;
+    }
+
+    return (
+      latitude <= mapBounds.north &&
+      latitude >= mapBounds.south &&
+      longitude <= mapBounds.east &&
+      longitude >= mapBounds.west
     );
   });
 
@@ -637,6 +674,7 @@ export default function PlaceBrowser({ places, events }: PlaceBrowserProps) {
           <TravelMap
             places={filteredPlaces}
             selectedPlaceId={selectedPlaceId}
+            onBoundsChange={setMapBounds}
           />
         </section>
       </div>
@@ -644,13 +682,13 @@ export default function PlaceBrowser({ places, events }: PlaceBrowserProps) {
       <aside className="min-w-0 xl:max-h-[680px] xl:overflow-y-auto xl:pr-2">
         <h2 className="mb-4 text-xl font-semibold">목록</h2>
 
-        {filteredPlaces.length === 0 ? (
+        {placesInMapView.length === 0 ? (
           <p className="rounded-xl border border-zinc-200 bg-white p-5 text-zinc-600">
             해당 조건에 등록된 장소가 없습니다.
           </p>
         ) : (
           <ul className="space-y-3">
-            {filteredPlaces.slice(0, visibleCount).map((place) => (
+            {placesInMapView.slice(0, visibleCount).map((place) => (
               <li
                 key={place.id}
                 onClick={() => setSelectedPlaceId(place.id)}
@@ -785,13 +823,13 @@ export default function PlaceBrowser({ places, events }: PlaceBrowserProps) {
             ))}
           </ul>
         )}
-        {visibleCount < filteredPlaces.length && (
+        {visibleCount < placesInMapView.length && (
           <button
             type="button"
             onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
             className="mt-4 w-full rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
           >
-            더 보기 ({filteredPlaces.length - visibleCount}개 남음)
+            더 보기 ({placesInMapView.length - visibleCount}개 남음)
           </button>
         )}
       </aside>

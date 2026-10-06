@@ -21,6 +21,7 @@ type PlaceListItem = Pick<
   | "memo"
   | "image_url"
   | "tags"
+  | "created_at"
 >;
 
 export default async function Home() {
@@ -29,7 +30,7 @@ export default async function Home() {
   const { data: places, error } = await supabase
     .from("places")
     .select(
-      "id, name, category, status, latitude, longitude, address, city, rating, memo, image_url, tags",
+      "id, name, category, status, latitude, longitude, address, city, rating, memo, image_url, tags, created_at",
     )
     .returns<PlaceListItem[]>();
 
@@ -54,7 +55,7 @@ export default async function Home() {
     longitude,
     image_url,
     memo,
-    tags
+    tags, created_at
   `,
     )
     .order("start_date", { ascending: true });

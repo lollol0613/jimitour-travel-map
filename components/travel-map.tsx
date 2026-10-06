@@ -71,6 +71,12 @@ function getCategoryIcon(category: MapPlace["category"]) {
 interface TravelMapProps {
   places: MapPlace[];
   selectedPlaceId?: string | null;
+  onBoundsChange?: (bounds: {
+    north: number;
+    south: number;
+    east: number;
+    west: number;
+  }) => void;
 }
 
 function createPopupContent(place: MapPlace) {
@@ -130,10 +136,28 @@ function createPopupContent(place: MapPlace) {
   return content;
 }
 
-export default function TravelMap({ places, selectedPlaceId }: TravelMapProps) {
+export default function TravelMap({
+  places,
+  selectedPlaceId,
+  onBoundsChange,
+}: TravelMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRefs = useRef<Record<string, maplibregl.Marker>>({});
+
+  const lastFitKeyRef = useRef<string | null>(null);
+
+  const placesKey = places
+    .map(
+      (place) => `${place.id}:${place.latitude ?? ""}:${place.longitude ?? ""}`,
+    )
+    .join("|");
+
+  const onBoundsChangeRef = useRef(onBoundsChange);
+
+  useEffect(() => {
+    onBoundsChangeRef.current = onBoundsChange;
+  }, [onBoundsChange]);
 
   useEffect(() => {
     if (!mapContainerRef.current) {
@@ -148,15 +172,31 @@ export default function TravelMap({ places, selectedPlaceId }: TravelMapProps) {
       center: AUCKLAND_CENTER,
       zoom: 12,
     });
+
     mapRef.current = map;
+
+    const updateBounds = () => {
+      const bounds = map.getBounds();
+
+      onBoundsChangeRef.current?.({
+        north: bounds.getNorth(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        west: bounds.getWest(),
+      });
+    };
 
     map.on("error", (event) => {
       console.error("MapLibre error:", event.error);
     });
 
+    map.on("moveend", updateBounds);
+
     map.addControl(new maplibregl.NavigationControl(), "top-right");
 
     return () => {
+      map.off("moveend", updateBounds);
+
       mapRef.current = null;
       map.remove();
     };
@@ -166,6 +206,10 @@ export default function TravelMap({ places, selectedPlaceId }: TravelMapProps) {
     const map = mapRef.current;
 
     if (!map) {
+      return;
+    }
+
+    if (lastFitKeyRef.current === placesKey) {
       return;
     }
 
@@ -184,31 +228,49 @@ export default function TravelMap({ places, selectedPlaceId }: TravelMapProps) {
       return;
     }
 
-    if (visiblePlaces.length === 1) {
-      map.flyTo({
-        center: [
-          Number(visiblePlaces[0].longitude),
-          Number(visiblePlaces[0].latitude),
-        ],
-        zoom: 12,
-        essential: true,
+    const fitMapToPlaces = () => {
+      if (lastFitKeyRef.current === placesKey) {
+        return;
+      }
+
+      lastFitKeyRef.current = placesKey;
+
+      if (visiblePlaces.length === 1) {
+        map.flyTo({
+          center: [
+            Number(visiblePlaces[0].longitude),
+            Number(visiblePlaces[0].latitude),
+          ],
+          zoom: 12,
+          essential: true,
+        });
+
+        return;
+      }
+
+      const bounds = new maplibregl.LngLatBounds();
+
+      visiblePlaces.forEach((place) => {
+        bounds.extend([Number(place.longitude), Number(place.latitude)]);
       });
 
-      return;
+      map.fitBounds(bounds, {
+        padding: 80,
+        maxZoom: 12,
+        duration: 800,
+      });
+    };
+
+    if (map.loaded()) {
+      fitMapToPlaces();
+    } else {
+      map.once("load", fitMapToPlaces);
     }
 
-    const bounds = new maplibregl.LngLatBounds();
-
-    visiblePlaces.forEach((place) => {
-      bounds.extend([Number(place.longitude), Number(place.latitude)]);
-    });
-
-    map.fitBounds(bounds, {
-      padding: 80,
-      maxZoom: 12,
-      duration: 800,
-    });
-  }, [places]);
+    return () => {
+      map.off("load", fitMapToPlaces);
+    };
+  }, [places, placesKey]);
 
   useEffect(() => {
     const map = mapRef.current;
