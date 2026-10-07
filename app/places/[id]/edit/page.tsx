@@ -116,6 +116,14 @@ export default async function EditPlacePage({ params }: EditPlacePageProps) {
 
   const supabase = await createServerSupabaseClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
   const { data: place, error } = await supabase
     .from("places")
     .select("*")

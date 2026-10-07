@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getGoogleMapsSearchUrl } from "@/lib/google-maps";
 import { supabase } from "@/lib/supabase";
 import type { Place } from "@/types/place";
-
+import AdminOnly from "@/components/admin-only";
 import { getRatingLabel } from "@/lib/rating";
 
 type PlaceDetail = Pick<
@@ -129,12 +129,14 @@ export default async function PlacePage({ params }: PlacePageProps) {
                 Google Maps에서 보기
               </a>
 
-              <Link
-                href={`/places/${place.id}/edit`}
-                className="inline-flex items-center justify-center rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
-              >
-                수정
-              </Link>
+              <AdminOnly>
+                <Link
+                  href={`/places/${place.id}/edit`}
+                  className="inline-flex items-center justify-center rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
+                >
+                  수정
+                </Link>
+              </AdminOnly>
             </div>
           </div>
         </div>
