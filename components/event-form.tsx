@@ -1,6 +1,113 @@
+"use client";
+
+import { useState } from "react";
 import { createEvent } from "@/app/actions/event";
 
+const MAX_IMAGE_SIZE = 1600;
+const TARGET_FILE_SIZE = 850 * 1024;
+
+async function convertImageToWebp(file: File) {
+  const bitmap = await createImageBitmap(file);
+
+  let width = bitmap.width;
+  let height = bitmap.height;
+
+  if (width > MAX_IMAGE_SIZE || height > MAX_IMAGE_SIZE) {
+    const ratio = Math.min(MAX_IMAGE_SIZE / width, MAX_IMAGE_SIZE / height);
+
+    width = Math.round(width * ratio);
+    height = Math.round(height * ratio);
+  }
+
+  const canvas = document.createElement("canvas");
+
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    bitmap.close();
+    throw new Error("이미지를 처리할 수 없습니다.");
+  }
+
+  context.drawImage(bitmap, 0, 0, width, height);
+
+  bitmap.close();
+
+  let quality = 0.82;
+
+  let blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, "image/webp", quality);
+  });
+
+  while (blob && blob.size > TARGET_FILE_SIZE && quality > 0.45) {
+    quality -= 0.08;
+
+    blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, "image/webp", quality);
+    });
+  }
+
+  if (!blob) {
+    throw new Error("WebP 변환에 실패했습니다.");
+  }
+
+  if (blob.size > TARGET_FILE_SIZE) {
+    throw new Error("압축 후에도 이미지 용량이 너무 큽니다.");
+  }
+
+  return new File([blob], `${file.name.replace(/\.[^/.]+$/, "")}.webp`, {
+    type: "image/webp",
+  });
+}
+
 export default function EventForm() {
+  const [imageMessage, setImageMessage] = useState("");
+  const [processingImage, setProcessingImage] = useState(false);
+
+  async function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+
+    if (!file) {
+      setImageMessage("");
+      return;
+    }
+
+    try {
+      setProcessingImage(true);
+      setImageMessage("이미지 최적화 중...");
+
+      const originalSize = file.size;
+
+      const convertedFile = await convertImageToWebp(file);
+
+      const dataTransfer = new DataTransfer();
+
+      dataTransfer.items.add(convertedFile);
+
+      input.files = dataTransfer.files;
+
+      const originalMb = (originalSize / 1024 / 1024).toFixed(1);
+      const convertedKb = Math.round(convertedFile.size / 1024);
+
+      setImageMessage(
+        `✓ ${originalMb}MB → ${convertedKb}KB WebP로 최적화되었습니다.`,
+      );
+    } catch (error) {
+      console.error(error);
+
+      input.value = "";
+
+      setImageMessage(
+        "이미지를 처리하지 못했습니다. 용량이 작은 JPG, PNG 또는 WebP 이미지를 선택해주세요.",
+      );
+    } finally {
+      setProcessingImage(false);
+    }
+  }
+
   return (
     <form
       action={createEvent}
@@ -25,6 +132,7 @@ export default function EventForm() {
 
       <div>
         <label className="mb-2 block text-sm font-medium">월</label>
+
         <select
           name="event_month"
           required
@@ -49,6 +157,7 @@ export default function EventForm() {
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="mb-2 block text-sm font-medium">시작일</label>
+
           <input
             type="date"
             name="start_date"
@@ -59,6 +168,7 @@ export default function EventForm() {
 
         <div>
           <label className="mb-2 block text-sm font-medium">종료일</label>
+
           <input
             type="date"
             name="end_date"
@@ -69,6 +179,7 @@ export default function EventForm() {
 
       <div>
         <label className="mb-2 block text-sm font-medium">카테고리</label>
+
         <input
           name="category"
           placeholder="예: Marathon, Festival, Parade"
@@ -95,6 +206,7 @@ export default function EventForm() {
 
       <div>
         <label className="mb-2 block text-sm font-medium">주소</label>
+
         <input
           name="address"
           className="w-full rounded-lg border border-zinc-300 px-3 py-2"
@@ -104,6 +216,7 @@ export default function EventForm() {
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="mb-2 block text-sm font-medium">Latitude</label>
+
           <input
             name="latitude"
             type="number"
@@ -114,6 +227,7 @@ export default function EventForm() {
 
         <div>
           <label className="mb-2 block text-sm font-medium">Longitude</label>
+
           <input
             name="longitude"
             type="number"
@@ -125,6 +239,7 @@ export default function EventForm() {
 
       <div>
         <label className="mb-2 block text-sm font-medium">Website URL</label>
+
         <input
           name="website_url"
           type="url"
@@ -139,23 +254,37 @@ export default function EventForm() {
           name="image_file"
           type="file"
           accept="image/*"
+          onChange={handleImageChange}
           className="block w-full text-sm text-zinc-600
-      file:mr-4
-      file:rounded-md
-      file:border-0
-      file:bg-zinc-100
-      file:px-4
-      file:py-2
-      file:text-sm
-      file:font-medium
-      hover:file:bg-zinc-200"
+            file:mr-4
+            file:rounded-md
+            file:border-0
+            file:bg-zinc-100
+            file:px-4
+            file:py-2
+            file:text-sm
+            file:font-medium
+            hover:file:bg-zinc-200"
         />
 
-        <p className="mt-1 text-xs text-zinc-500">URL or 업로드 가능</p>
+        {imageMessage && (
+          <p
+            className={`mt-2 text-xs ${
+              imageMessage.startsWith("✓")
+                ? "text-green-600"
+                : imageMessage === "이미지 최적화 중..."
+                  ? "text-zinc-500"
+                  : "text-red-600"
+            }`}
+          >
+            {imageMessage}
+          </p>
+        )}
       </div>
 
       <div>
         <label className="mb-2 block text-sm font-medium">메모</label>
+
         <textarea
           name="memo"
           rows={4}
@@ -165,9 +294,10 @@ export default function EventForm() {
 
       <button
         type="submit"
-        className="w-full rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700"
+        disabled={processingImage}
+        className="w-full rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-zinc-400"
       >
-        이벤트 저장
+        {processingImage ? "이미지 처리 중..." : "이벤트 저장"}
       </button>
     </form>
   );
